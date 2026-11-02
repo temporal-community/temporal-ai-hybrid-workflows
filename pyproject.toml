@@ -1,0 +1,37 @@
+[project]
+name = "temporal-ai-dynamic-workflows"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "openai>=3.37.0",
+    "python-dotenv>=1.2.4",
+    "rich>=15.0.0",
+    "temporalio>=1.34.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+    "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Runs `async def test_...` functions without a decorator on each one.
+asyncio_mode = "auto"
+# One event loop for the whole run, so every test shares one dev server.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+# The retry tests fail a session while its first message is still in flight, on purpose.
+filterwarnings = ["ignore::temporalio.workflow.UnfinishedUpdateHandlersWarning"]
+
+[tool.ruff]
+# The code is laid out to be read on camera at this width.
+line-length = 100
+
+[tool.ruff.lint]
+# Bugs only: syntax, undefined and unused names. The code's layout is tuned for
+# the video, so import sorting and `ruff format` are left off on purpose.
+select = ["E4", "E7", "E9", "F", "W"]
