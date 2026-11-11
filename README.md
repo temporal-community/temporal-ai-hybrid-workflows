@@ -1,6 +1,6 @@
 # An AI agent that chooses its own path, and a KYC flow it can't skip
 
-In a "dynamic workflow", an AI model decides the next step at runtime. That
+In a "hybrid workflow", an AI model decides the next step at runtime. That
 suits open conversations, but regulated onboarding must run the same checks in
 the same order for everyone, and survive a crash. This repo does both in one
 Temporal Workflow, for a made-up UK investment firm.
@@ -367,7 +367,7 @@ session over pays for every call again.
 
 ### Video
 
-**Dynamic workflows, Temporal & AI Series.**
+**Hybrid workflows, Temporal & AI Series.**
 
 - **What it ran:** `make worker REAL=1` with an OpenAI key and `gpt-5.4-mini`,
   four customers from [docs/run-and-present.md](docs/run-and-present.md).
