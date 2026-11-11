@@ -3,3 +3,6 @@ __pycache__/
 .env
 # The local dev server's data (make server)
 demo.db
+
+# macOS Finder metadata
+.DS_Store
