@@ -57,7 +57,8 @@ failure: ## Crash the Worker (kill -9) while a session is in flight
 		|| echo "No Worker started with make worker or make recovery is running."
 
 # The same command as `make worker`. The new Worker replays the Event History
-# and carries on from the step that had not finished; nothing runs twice.
+# and carries on from the step that had not finished. Finished steps don't run
+# again; a step in flight at the crash can.
 recovery: ## Start a new Worker after make failure
 	$(MODEL_ENV) PYTHONPATH="$(CURDIR)" uv run python "$(CURDIR)/app/worker.py"
 

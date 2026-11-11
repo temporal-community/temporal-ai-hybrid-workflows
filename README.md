@@ -13,7 +13,9 @@ Temporal Workflow, for a made-up UK investment firm.
     ([`check_tool_call`](app/agent.py)).
 - **The fixed part:** the guarantees don't change.
   - **Fixed steps:** the KYC child Workflow ([`KycWorkflow`](app/workflows.py))
-    runs the same five checks in the same order for every customer.
+    runs the same steps in the same order for every customer: five on the
+    approved path, plus a compliance review when screening finds a possible
+    match.
   - **Durable execution:** the Event History records every decision and step,
     so a new Worker resumes after a crash without repeating finished steps.
 
@@ -161,6 +163,11 @@ session. To start from an empty history, stop the server and delete `demo.db`.
 
 ## How it works
 
+![Architecture diagram headed "Where each part runs". On the left, three terminals: the Chat (app/chat.py) starts the session Workflow, sends each message as an Update, and follows KYC with a Query; Document upload (app/upload.py) and Compliance reviewer (app/review.py) each send a Signal. All three talk to the Temporal Service at localhost:7233, which holds the investment-demo Task Queue and the Event History for session-<customer> and kyc-<customer>. On the right, the Worker (app/worker.py) polls the Task Queue and runs the Workflow code and every Activity. Inside it, InvestmentSessionWorkflow, drawn with a dashed pink border for "the agent chooses", loops through decide_next_step (the fake model, or OpenAI with REAL=1), check_tool_call, and a tool Activity, up to 12 turns per phase. Its phases run Explore, KYC as a child Workflow, Get started, then a Review after a durable timer. After the customer picks an option with the accept_option Update, it starts KycWorkflow, drawn in solid blue for "fixed steps": 1 Verify identity, 2 Proof of address (waits for a Signal), 3 Sanctions screening (a possible match waits for a review Signal), 4 Consent (an Update that accepts "I agree"), 5 Open account. A dashed arrow from the Worker to the OpenAI API is labelled REAL=1; the default run uses the fake model with no key and no tokens.](assets/architecture.png)
+
+<details>
+<summary>The session as a Mermaid flowchart</summary>
+
 One session, read top to bottom: wide where the agent chooses, narrow where
 code fixes the steps, then wide again. Every box is an Activity, an Update, a
 Signal, or a timer recorded in the Event History of `session-<customer>` or
@@ -199,6 +206,8 @@ flowchart TD
     kyc --> started --> closing
     closing -.->|if a review was booked| timer
 ```
+
+</details>
 
 - **The chat** ([`app/chat.py`](app/chat.py)) starts an
   `InvestmentSessionWorkflow` with the Workflow ID `session-<customer>`, and
@@ -306,6 +315,9 @@ session over pays for every call again.
 - **To measure it yourself:** `make worker REAL=1`, then run a session. The
   chat's last line, `Model: N calls, N tokens.`, comes from the
   `model_usage` Query, which sums the `usage.total_tokens` OpenAI returns.
+  That is reported usage: it counts only calls that returned, so an attempt
+  that failed or timed out isn't in it. OpenAI's usage page shows what was
+  billed.
 - **Prices:** gpt-5.4-mini $0.75 in and $4.50 out per million tokens, as read
   on 2026-11-02 ([OpenAI pricing](https://developers.openai.com/api/docs/pricing)).
   Cached input is $0.075, so prompt caching of the repeated system prompt and
@@ -369,8 +381,10 @@ session over pays for every call again.
 
 **Hybrid workflows, Temporal & AI Series.**
 
-- **What it ran:** `make worker REAL=1` with an OpenAI key and `gpt-5.4-mini`,
-  four customers from [docs/run-and-present.md](docs/run-and-present.md).
+- **What it ran:** an earlier build of this repo, with the Worker started by
+  `uv run python -m app.worker` against OpenAI and one customer typed live.
+  Commands and line numbers on screen differ a little from this version;
+  `make worker REAL=1` runs the same path today.
 - **No keys?** `make worker` tells the same story with the fake model.
 
 ### Docs and more
@@ -387,6 +401,11 @@ session over pays for every call again.
   (Signals, Queries, and Updates).
 - **Cost to run:** tokens and dollars for a full session are in [Cost to
   run](#cost-to-run).
+
+## Acknowledgments
+
+Thanks to Michael Jones, Jason Steving, Johann Schleier-Smith, Brian
+MacDonald, and Melanie Warrick for reviewing this demo and its video.
 
 ## License
 
