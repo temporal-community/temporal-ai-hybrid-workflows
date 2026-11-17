@@ -1,7 +1,8 @@
-# An AI agent that chooses its own path, and a KYC flow it can't skip
+# Hybrid Workflows: an AI agent with fixed KYC steps on Temporal
 
-In a "hybrid workflow", an AI model decides the next step at runtime. That
-suits open conversations, but regulated onboarding must run the same checks in
+In a "hybrid workflow", an AI model decides part of the path at runtime, and
+code fixes the rest. The model's part suits open conversations, but regulated
+onboarding must run the same checks in
 the same order for everyone, and survive a crash. This repo does both in one
 Temporal Workflow, for a made-up UK investment firm.
 
@@ -30,8 +31,8 @@ The failure mode is **a required step skipped or lost**.
 
 ![A diagram headed "The route varies. The crossing doesn't." On the left, dashed pink routes curve out from START and labelled "The agent chooses". They all meet at one narrow blue box of four segments labelled "Fixed steps". On the right, the routes fan out again, also labelled "The agent chooses", and rejoin at END. Along the bottom, a green line of evenly spaced dots runs the full width, labelled "Every step recorded". A caption reads "Different routes in and out. The same crossing every time."](assets/temporal-ai-dynamic-workflows.jpg)
 
-**Last verified 2026-11-02:** tests, lint, and a fake-model session with a
-Worker crash and recovery on a local dev server; the OpenAI path was not run.
+**Last verified 2026-11-17:** tests and lint; a gpt-5.4-mini session on
+2026-11-12. Crash and recovery not re-run since 2026-11-02.
 
 ## Run it
 
@@ -43,8 +44,8 @@ Worker crash and recovery on a local dev server; the OpenAI path was not run.
 OpenAI path needs `OPENAI_API_KEY` (see [below](#keys-and-settings)).
 
 ```bash
-git clone https://github.com/temporal-community/temporal-ai-dynamic-workflows.git
-cd temporal-ai-dynamic-workflows
+git clone https://github.com/temporal-community/temporal-ai-hybrid-workflows.git
+cd temporal-ai-hybrid-workflows
 make setup                  # uv sync, then test -f .env || cp .env.example .env
 make server                 # terminal 1: temporal server start-dev --db-filename demo.db
 make worker                 # terminal 2: prints Worker listening on 'investment-demo'
@@ -69,6 +70,7 @@ make run NAME="Customer A"  # terminal 3: uv run python -m app.chat "Customer A"
 | run | `make run NAME="Customer A"` | `uv run python -m app.chat "Customer A"` | The chat ends with `Model: fake. No model calls.` |
 | test | `make test` | `uv run pytest` | Offline. Ends with `12 passed`, exit code 0 |
 | lint | `make lint` | `uv run ruff check .` | `All checks passed!` |
+| reset | `make reset` | `temporal workflow terminate --yes --reason "make reset" --query 'TaskQueue="investment-demo" AND ExecutionStatus="Running"'` | `Started batch for job ID: ...` |
 
 During KYC, two more people join from a fourth terminal, as they would in a
 real firm:
@@ -82,7 +84,11 @@ real firm:
 "Smith" gets a possible sanctions match and waits for the reviewer.
 
 Failure and recovery: [Put it under real conditions](#put-it-under-real-conditions).
-Reset: [Reset](#reset).
+
+<a id="reset"></a>**Reset:** `make reset` ends only this demo's running
+Workflows (sessions and their KYC child Workflows) and stops no server.
+Running `make run` with the same name also replaces that customer's earlier
+session. To start from an empty history, stop the server and delete `demo.db`.
 
 <details>
 <summary id="keys-and-settings">Keys for the OpenAI path, and other settings</summary>
@@ -153,13 +159,17 @@ durable timer, and the crash are real. The products, the ISA allowance, and
 every KYC step are stubs that return made-up data. The review timer counts a
 month as 2 seconds so it fires while you watch.
 
-## Reset
+## Demo takeaways
 
-`make reset` runs `temporal workflow terminate --yes --reason "make reset" --query 'TaskQueue="investment-demo" AND ExecutionStatus="Running"'`
-and prints `Started batch for job ID: ...`. It ends only this demo's running
-Workflows (sessions and their KYC child Workflows) and stops no server.
-Running `make run` with the same name also replaces that customer's earlier
-session. To start from an empty history, stop the server and delete `demo.db`.
+- **The path can be dynamic.** The agent chose different questions, products,
+  and follow-ups for each customer, and every choice is in the Event History.
+- **The guarantees are not.** KYC ran the same steps in the same order for
+  both, because it is Workflow code the agent has no tool for, not an
+  instruction in the prompt.
+- **A durable runtime records every step.** After a crash, KYC resumed from the
+  step it was on without repeating identity checks. Temporal guarantees the
+  chosen path is recorded, retried, and resumable; it doesn't guarantee the
+  agent chose well. That is what evals and guardrails are for.
 
 ## How it works
 
@@ -273,18 +283,6 @@ phase.
 
 </details>
 
-## Demo takeaways
-
-- **The path can be dynamic.** The agent chose different questions, products,
-  and follow-ups for each customer, and every choice is in the Event History.
-- **The guarantees are not.** KYC ran the same steps in the same order for
-  both, because it is Workflow code the agent has no tool for, not an
-  instruction in the prompt.
-- **A durable runtime records every step.** After a crash, KYC resumed from the
-  step it was on without repeating identity checks. Temporal guarantees the
-  chosen path is recorded, retried, and resumable; it doesn't guarantee the
-  agent chose well. That is what evals and guardrails are for.
-
 ## Cost to run
 
 - **One full session on gpt-5.4-mini (Customer A's path, with the review):**
@@ -372,6 +370,7 @@ session over pays for every call again.
 | `Type "I agree" to accept these terms` again after you typed something else | The consent Update accepts only the exact words. | Type `I agree`. |
 | The chat spinner never stops | No Worker is running, or it was killed with `make failure`. | Run `make worker` (or `make recovery`). The session carries on from where it was. |
 | `No Worker started with make worker or make recovery is running.` | `make failure` only finds a Worker started by `make worker` or `make recovery`. | Start the Worker with `make worker`, or stop yours with Ctrl+C. |
+| `OpenAI rejected the request: Error code: 401 ... Missing scopes: model.request` on the failed session in the Web UI; the chat shows `Workflow Update failed because the Workflow completed before the Update completed.` | `OPENAI_API_KEY` is a restricted key that isn't allowed to call models. Nothing is billed. | Give the key model permissions in the OpenAI dashboard, or use an unrestricted project key. Then restart with `make worker REAL=1` and run `make run` again. |
 
 </details>
 
@@ -379,7 +378,7 @@ session over pays for every call again.
 
 ### Video
 
-**Hybrid workflows, Temporal & AI Series.**
+**Hybrid Workflows, Temporal & AI Series.**
 
 - **What it ran:** an earlier build of this repo, with the Worker started by
   `uv run python -m app.worker` against OpenAI and one customer typed live.
@@ -405,7 +404,8 @@ session over pays for every call again.
 ## Acknowledgments
 
 Thanks to Michael Jones, Jason Steving, Johann Schleier-Smith, Brian
-MacDonald, and Melanie Warrick for reviewing this demo and its video.
+MacDonald, and Melanie Warrick for reviewing this demo and its video, and to
+Melissa Herrera for reviewing the video.
 
 ## License
 

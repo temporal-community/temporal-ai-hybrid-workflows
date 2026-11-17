@@ -1,5 +1,5 @@
 [project]
-name = "temporal-ai-dynamic-workflows"
+name = "temporal-ai-hybrid-workflows"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
