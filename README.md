@@ -1,7 +1,7 @@
 # Hybrid Workflows: an AI agent with fixed KYC steps on Temporal
 
 In a "hybrid workflow", an AI model decides part of the path at runtime, and
-code fixes the rest. The model's part suits open conversations, but regulated
+code dictates the rest. The model's part suits open conversations, but regulated
 onboarding must run the same checks in
 the same order for everyone, and survive a crash. This repo does both in one
 Temporal Workflow, for a made-up UK investment firm.
@@ -13,12 +13,15 @@ Temporal Workflow, for a made-up UK investment firm.
   - **Guardrails:** code checks every tool call before it runs
     ([`check_tool_call`](app/agent.py)).
 - **The fixed part:** the guarantees don't change.
-  - **Fixed steps:** the KYC child Workflow ([`KycWorkflow`](app/workflows.py))
+  - **Fixed steps:** the Know Your Customer (KYC) child Workflow ([`KycWorkflow`](app/workflows.py))
     runs the same steps in the same order for every customer: five on the
     approved path, plus a compliance review when screening finds a possible
     match.
   - **Durable execution:** the Event History records every decision and step,
     so a new Worker resumes after a crash without repeating finished steps.
+
+> [!NOTE]
+> In our example we have 2 dynamic parts to our flow: the first explores potential products for the customer, we then have the fixed mandatory steps that verify the customers identity (KYC), and the 2nd dynamic part is where the agent decides how to onboard the customer onto the product based on prior responses. For example, does the customer require a check in or not? This is a simple implementation of a Hybrid Workflow, but it still demonstrates the value when both fixed and dynamic steps are required.
 
 When you know which steps the model should choose and which ones code must
 fix, you can give an agent freedom and still know exactly what it did.
