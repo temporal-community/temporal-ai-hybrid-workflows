@@ -2,7 +2,7 @@
 
 How coding agents run, test, and change this repo. The README says what the demo shows; this file holds the rules.
 
-This is a teaching demo for the Temporal & AI Series video on dynamic workflows. An agent explores investment options with a customer (the path is dynamic), a fixed KYC child Workflow opens the account (the guarantees are not), then the agent helps them get started. People read this code to learn, so clarity beats cleverness. Keep the story the video tells as carefully as the code.
+This is a teaching demo for the Temporal & AI Series video on hybrid workflows. An agent explores investment options with a customer (the path is dynamic), a fixed KYC child Workflow opens the account (the guarantees are not), then the agent helps them get started. People read this code to learn, so clarity beats cleverness. Keep the story the video tells as carefully as the code.
 
 ## Commands
 
